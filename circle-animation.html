@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas-circle-animation</title>
+</head>
+<style>
+    body {
+        margin: 0;
+    }
+    .canvas {
+        border: 1px solid #333333;
+    }
+</style>
+<body>
+    <div class="app">
+        <canvas class="canvas"></canvas>
+    </div>
+    <script>
+        const screenWidth = window.innerWidth;
+        const screenHeight = window.innerHeight;
+
+        const canvas = document.querySelector('.canvas');
+        canvas.width = screenWidth;
+        canvas.height = screenHeight;
+        const context = canvas.getContext('2d');
+
+        function Circle (x, y, dx, dy, radius) {
+            this.x = x;
+            this.y = y;
+            this.dx = dx;
+            this.dy = dy;
+            this.radius = radius;
+
+            
+            this.draw = () => {
+                context.strokeStyle = '#999999';
+                context.fillStyle = `#333333`;
+                context.beginPath();
+                context.arc(this.x, this.y, this.radius, 0, 2 * Math.PI, false);
+                context.stroke();
+                context.fill();
+            }
+
+            this.update = () => {
+                this.x += this.dx;
+                this.y += this.dy;
+                if (this.x + this.radius > screenWidth || this.x - this.radius < 0) {
+                    this.dx = -this.dx;
+                }
+                if (this.y + this.radius > screenHeight || this.y - this.radius < 0) {
+                    this.dy = -this.dy;
+                }
+            }
+        }
+
+        const circleArray = [];
+        for(let i = 0; i < 100; i++) {
+            let radius = (Math.random() + 0.5) * 30;
+            let x = Math.random() * (screenWidth - radius * 2) + radius;
+            let y = Math.random() * (screenHeight - radius * 2) + radius;
+            let dx = (Math.random() - 0.5) * 2;
+            let dy = (Math.random() - 0.5) * 2;
+            const circle = new Circle(x, y, dx, dy, radius);
+            circleArray.push(circle);
+        }
+
+        
+        function animation () {
+            requestAnimationFrame(animation)
+
+            context.clearRect(0, 0, screenWidth, screenHeight);
+
+            circleArray.forEach(circle => {
+                circle.draw();
+                circle.update();
+            })
+        }
+
+        animation()
+    </script>
+</body>
+</html>
