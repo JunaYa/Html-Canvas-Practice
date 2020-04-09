@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebComponent</title>
+</head>
+<body>
+    <style>
+        .layout-row {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-evenly;
+            max-width: 480px;
+        }
+        .btn {
+            color: #ffffff;
+            background-color: #333333;
+            border-radius: 4px;
+            padding: 8px 24px;
+            cursor: pointer;
+        }
+
+    </style>
+    <div class="layout-row">
+        <div class="btn btn-add">ADD</div>
+        <div class="btn btn-update">UPDATE</div>
+        <div class="btn btn-remove">REMOVE</div>
+    </div>
+    <script>
+
+        class Circle extends HTMLElement {
+            // 设置将要改变的属性， attributeChangedCallback 用来监听
+            static get observedAttributes() {
+                return ['text', 'radius', 'color', 'stroke-color']
+            }
+
+            constructor() {
+                super()
+
+                const shadow = this.attachShadow({mode: 'open'})
+
+                const div = document.createElement('div')
+                const style = document.createElement('style')
+
+                shadow.appendChild(style)
+                shadow.appendChild(div)
+            }
+
+            connectedCallback() {
+                console.log('connectedCallback')
+            }
+
+            disconnectedCallback() {
+                console.log('disconnectedCallback')
+            }
+
+            adopedCallback() {
+                console.log('adopedCallback')
+            }
+
+            attributeChangedCallback(name, oldValue, newValue) {
+                console.log(`attributeChangedCallback name = ${name}`, `oldValue = ${oldValue} newValue = ${newValue}`)
+
+                this.shadowRoot.querySelector('div').textContent = this.getAttribute('text') || 'default circle';
+                this.shadowRoot.querySelector('style').textContent = 
+                    `div {
+                        margin: 32px auto;
+                        width: ${this.getAttribute('radius')}px;
+                        height: ${this.getAttribute('radius')}px;
+                        border-radius: 50%;
+                        text-align: center;
+                        line-height: ${this.getAttribute('radius')}px;
+                        color: #FFFFFF;
+                        font-size: 32px;
+                        font-weight: bold;
+                        background-color: ${this.getAttribute('color')};
+                        border: 8px solid ${this.getAttribute('stroke-color')};
+                    }`
+            }
+        }
+
+
+        const btnAdd = document.querySelector('.btn-add');
+        const btnUpdate = document.querySelector('.btn-update');
+        const btnRemove = document.querySelector('.btn-remove');
+        let mCircle;
+        
+        function updateStyle() {
+            mCircle.setAttribute('text', Math.floor(Math.random() * 100));
+            mCircle.setAttribute('radius', 180);
+            mCircle.setAttribute('color', `rgb(${Math.floor(Math.random() * 255)},${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)})`);
+            mCircle.setAttribute('stroke-color', `rgb(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)})`);
+        }
+
+        btnAdd.addEventListener('click', () => {
+            if (btnAdd.disable) return
+            customElements.define('c-circle', Circle);
+            mCircle = document.createElement('c-circle', Circle);
+            updateStyle();
+            document.body.appendChild(mCircle);
+            btnAdd.disable = true;
+        })
+        btnUpdate.addEventListener('click', () => {
+            updateStyle();
+        })
+        btnRemove.addEventListener('click', () => {
+            document.body.removeChild(mCircle);
+            btnAdd.disable = false;
+        })
+    </script>
+</body>
+</html>
