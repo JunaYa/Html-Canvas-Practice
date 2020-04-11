@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FireWorksByCanvas</title>
+</head>
+<body>
+    <canvas></canvas>
+    <script>
+        const canvas = document.querySelector('canvas')
+        canvas.width = window.innerWidth
+        canvas.height = window.innerHeight
+
+        const context = canvas.getContext('2d')
+
+        const mouse = {
+            x: undefined,
+            y: undefined,
+        }
+
+        let isToushDown = false
+
+        window.addEventListener('mousedown', () => {
+            isToushDown = true
+        }, false)
+
+        window.addEventListener('mouseup', () => {
+            isToushDown = false
+        }, false)
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth
+            canvas.height = window.innerHeight
+            initializeVariables()
+        })
+
+        window.addEventListener('mousemove', (event) => {
+            mouse.x = event.clientX
+            mouse.y = event.clientY
+        })
+
+        let gravity = 0.08
+        let cannon
+        let cannonball
+        let cannonballs
+        let explosions
+        let colors
+
+        let timer = 0
+        let isIntroComplete = false
+        let introTimer = 0
+
+
+        class Cannon {
+            constructor(x, y, width, height, color) {
+                this.x = x
+                this.y = y
+                this.width = width
+                this.height = height
+                this.color = color
+                this.angle = 0
+            }
+
+            draw(c) {
+                c.save()
+                c.translate(this.x, this.y)
+                c.rotate(this.angle)
+                c.beginPath()
+                c.fillStyle = this.color
+                c.shadowColor = this.color
+                c.shadowBlur = 3
+                c.shadowOffsetX = 0
+                c.shadowOffsetY = 0
+                c.fillRect(0, -this.height / 2, this.width, this.height)
+                c.closePath()
+                c.restore()
+            }
+
+            update(canvas, context) {
+                let desireAngle = Math.atan2(mouse.y - this.y, mouse.x - this.x)
+                this.angle = desireAngle
+                this.draw(context)
+            }
+        }
+
+        class Cannonball {
+            constructor(x, y, dx, dy, radius, color, cannon, particleColors, canvas) {
+                this.x = x
+                this.y = y
+                this.dx = dx
+                this.dy = dy
+                this.radius = radius
+                this.color = color
+                this.cannon = cannon
+                this.particleColors = particleColors
+                this.timeToLive = 0
+
+                this.init(canvas)
+            }
+
+            init(canvas) {
+                this.timeToLive = canvas.height / (canvas.height + 800)
+
+                this.x = Math.cos(this.cannon.angle) * this.cannon.width
+                this.y = Math.sin(this.cannon.angle) * this.cannon.height
+
+                this.x = this.x + (canvas.width / 2)
+                this.y = this.y + (canvas.height)
+
+                if (mouse.x - canvas.width / 2 < 0) {
+                    this.dx = -this.dx
+                }
+
+                this.dx = Math.cos(this.cannon.angle) * 8
+                this.dy = Math.sin(this.cannon.angle) * 8
+            }
+
+            update(canvas, context) {
+                if (this.y + this.radius + this.dy > canvas.height) {
+                    this.dy = -this.dy
+                } else {
+                    this.dy += 0.08 // gravity
+                }
+
+                this.x += this.dx
+                this.y += this.dy
+                this.draw(context)
+
+                this.timeToLive -= 0.01
+            }
+
+            draw(c) {
+                // console.log('------', this.y)
+                c.save()
+                c.beginPath()
+                c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false)
+                c.shadowColor = this.color
+                c.shadowBlur = 5
+                c.shadowOffsetX = 0
+                c.shadowOffsetY = 0
+                c.fillStyle = this.color
+                c.fill()
+                c.closePath()
+                c.restore()
+            }
+        }
+
+        class Particle {
+            constructor(x, y, dx, dy, radius, color) {
+                this.x = x
+                this.y = y
+                this.dx = dx
+                this.dy = -dy
+                this.radius = radius
+                this.color = color
+                this.timeToLive = 1
+            }
+
+            update(canvas, context) {
+                if (this.y + this.radius + this.dy > canvas.height) {
+                    this.dy = -this.dy
+                }
+                if (this.x + this.radius + this.dx > canvas.with
+                    || this.x - this.radius + this.dx < 0) {
+                    this.dx = -this.dx
+                }
+
+                this.x += this.dx
+                this.y += this.dy
+
+                this.draw(context)
+
+                this.timeToLive -= 0.01
+            }
+
+            draw(c) {
+                c.save()
+                c.beginPath()
+                c.arc(this.x, this.y, 2, 0, Math.PI * 2, false)
+                c.shadowColor = this.color
+                c.shadowBlur = 10
+                c.shadowOffsetX = 0
+                c.shadowOffsetY = 0
+                c.fillStyle = this.color
+                c.fill()
+                c.closePath()
+                c.restore()
+            }
+        }
+        
+        class Explosion {
+            constructor(cannonball) {
+                this.cannonball = cannonball
+                this.particles = []
+                this.rings = []
+                this.init()
+            }
+
+            init() {
+                for(let i = 0; i < 10; i++) {
+                    let dx = (Math.random() * 6) - 3
+                    let dy = (Math.random() * 6) - 3
+
+                    let randomColorIndex = Math.floor(Math.random() * this.cannonball.particleColors.length)
+                    let randomParticleColor = this.cannonball.particleColors[randomColorIndex]
+
+                    this.particles.push(new Particle(this.cannonball.x, this.cannonball.y, dx, dy, 1, randomParticleColor))
+                }
+            }
+
+            update(canvas, context) {
+                for(let i = 0; i < this.particles.length; i++) {
+                    this.particles[i].update(canvas, context)
+
+                    if (this.particles[i].timeToLive < 0) {
+                        // 注意， splice 会产生一个新的数组影响性能
+                        this.particles.splice(i, 1)
+                    }
+                }
+
+                for(let j = 0; j < this.rings.length; j++) {
+                    this.rings[j].update(canvas, context)
+
+                    if (this.rings[j].timeToLive < 0) {
+                        this.rings.splice(j, 1)
+                    }
+                }
+            }
+        }
+        
+        function initializeVariables() {
+            cannon = new Cannon(canvas.width / 2, canvas.height, 20, 10, "white");
+            cannonballs = [];
+            explosions = [];
+            colors = [
+                // Red / Orange
+                {
+                    cannonballColor: "#fff",
+                    particleColors: ["#ff4747", "#00ceed", "#fff"]
+                }
+            ]
+        }
+
+        initializeVariables();
+
+        function animate() {
+            requestAnimationFrame(animate)
+            context.fillStyle = 'rgba(18, 18, 18, 0.2)'
+            context.fillRect(0, 0, canvas.width, canvas.height)
+            cannon.update(canvas, context)
+
+            if (isIntroComplete === false) {
+                introTimer += 1
+                if (introTimer % 3 === 0) {
+                    let randomColor = Math.floor(Math.random() * colors.length)
+                    let color = colors[randomColor]
+                    cannonballs.push(new Cannonball(canvas.width / 2, canvas.height / 2, 2, 2, 4, color.cannonballColor, cannon, color.particleColors, canvas))
+                    if (introTimer > 30) {
+                        isIntroComplete = true
+                    }
+                }
+            }
+
+            // Render cannonball
+            for (let i = 0; i < cannonballs.length; i++) {
+                cannonballs[i].update(canvas, context)
+
+                if (cannonballs[i].timeToLive <= 0) {
+                    explosions.push(new Explosion(cannonballs[i]))
+                    cannonballs.splice(i, 1)
+                }
+            }
+
+            // Render explosions
+            for (let j = 0; j < explosions.length; j++) {
+                explosions[j].update(canvas, context)
+
+                if (explosions[j].particles.length <= 0) {
+                    explosions.splice(j, 1)
+                }
+            }
+
+            if (isToushDown === true) {
+                timer += 1
+                if (timer % 3 === 0) {
+                    let randomParticleColorIndex = Math.floor(Math.random() * colors.length)
+                    let randomColors = colors[randomParticleColorIndex]
+                    cannonballs.push(new Cannonball(mouse.x, mouse.y, 2, 2, 4, randomColors.cannonballColor, cannon, randomColors.particleColors, canvas))
+                }
+            }
+        }
+        
+        animate()
+    </script>
+</body>
+</html>
