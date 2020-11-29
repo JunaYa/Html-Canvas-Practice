@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    body {
+      background: black;
+      color:#CCCCCC; 
+    }
+    video {
+      width: 160px;
+      height: 96px;
+    }
+    #c2 {
+      /* background-image: url(./foo.png); */
+      background-image: url(https://oss-sts-upload.yunshuxie.com/pic/thadm/talk_picture/2020/08/20/15/34/58/72d4e42225784761820e5a58a2cbaa6e/6c42e7f6-833c-4b08-97b0-eca051e85e29.png);
+      background-repeat: no-repeat;
+      background-size: contain;
+    }
+    div {
+      float: left;
+      border :1px solid #444444;
+      padding:10px;
+      margin: 10px;
+      background:#3B3B3B;
+    }
+  </style>
+</head>
+<body>
+  <button class="button-fetch-video">FetchVideo</button>
+  <div>
+    <video id="video" controls="true"/>
+  </div>
+  <div>
+    <canvas id="c1" width="480" height="288"></canvas>
+    <canvas id="c2" width="480" height="288"></canvas>
+  </div>
+  <script >
+    const styles = 
+          `width: 100%; padding: 6px 100px; background-color: blue; color: white; font-style: 
+          italic; font-size: 2em; border-radius: 4px;`;
+    console.log('%c云舒写', styles);
+
+    // const video = document.getElementById("video");
+    const video = document.createElement('video');
+    const ctx1 = document.getElementById("c1").getContext("2d");
+    const ctx2 = document.getElementById("c2").getContext("2d");
+
+    const width = 480;
+    const height = 288;
+
+    function computeFrame() {
+      if (video.paused || video.ended) {
+        return;
+      }
+      requestAnimationFrame(computeFrame);
+      ctx1.drawImage(video, 0, 0, width, height);
+      let frame = ctx1.getImageData(0, 0, width, height);
+      let l = frame.data.length / 4;
+  
+      for (let i = 0; i < l; i++) {
+        let r = frame.data[i * 4 + 0];
+        let g = frame.data[i * 4 + 1];
+        let b = frame.data[i * 4 + 2];
+        if (g > 100 && r > 100 && b < 43)
+          frame.data[i * 4 + 3] = 0;
+      }
+      ctx2.putImageData(frame, 0, 0);
+      return;
+    }
+
+    video.addEventListener('play', () => {
+      computeFrame();
+    })
+
+    document.querySelector('.button-fetch-video').addEventListener('click', onButtonClick);
+
+    function onButtonClick() {
+      // This will allow us to play video later...
+      video.load();
+      // fetchVideoAndPlay();
+
+      liveVideo();
+    }
+
+    function fetchVideoAndPlay() {
+      fetch('http://oss-sts-upload.yunshuxie.com/video/thadm/talk_picture/2020/08/24/15/13/59/fdab4d296c564f5785bbda836cd0b139/c6902f39-53ac-46ac-91e2-8d92f688f0a5.mp4')
+      .then(response => response.blob())
+      .then(blob => {
+        video.srcObject = URL.createObjectURL(blob);
+        return video.play();
+      })
+      .then(_ => {
+        console.log('video play');
+        // Video playback started ;)
+      })
+      .catch(e => {
+        console.log('video play error:', e);
+        // Video playback failed ;(
+      })
+    }
+    
+    async function liveVideo() {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({video: true});
+      console.log('mediaStream', mediaStream)
+      video.srcObject = mediaStream;
+      if ('srcObject' in video) {
+        try {
+          video.srcObject = mediaStream;
+        } catch (err) {
+          if (err.name != "TypeError") {
+            throw err;
+          }
+          // Even if they do, they may only support MediaStream
+          video.src = URL.createObjectURL(mediaStream);
+        }
+      } else {
+        // Avoid using this in new browsers, as it is going away.
+        video.src = URL.createObjectURL(mediaStream);
+      }
+      video.play();
+    }
+  </script>
+</body>
+</html>
