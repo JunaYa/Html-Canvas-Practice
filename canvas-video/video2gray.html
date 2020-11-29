@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <canvas id="canvas" width="800" height="800"></canvas>
+    <video class="video" controls preload="metadata" src="./assets/video.mp4"></video>
+    <script>
+        const canvas = document.querySelector('#canvas');
+        const ctx = canvas.getContext('2d');
+
+        const video = document.querySelector('.video');
+
+        video.addEventListener('loadedmetadata', function() {
+            canvas.width = this.videoWidth;
+            canvas.height = this.videoHeight;
+        });
+
+        var draw = function() {
+            ctx.drawImage(video, 0, 0);
+            // inverColor();
+            makeGrayScale();
+            requestAnimationFrame(draw);
+        }
+
+        video.addEventListener('play', function() {
+            if (video.paused || video.ended) {
+                return
+            }
+            draw();
+        });
+
+        // https://tannerhelland.com/2011/10/01/grayscale-image-algorithm-vb6.html
+        const makePixelGrayScale = function(r, g, b, a) {
+            // // Gray = (Red * 0.3 + Green * 0.59 + Blue * 0.11)
+            // const y = (0.3 * r) + (0.59 * g) + (0.11 * b);
+
+            // // Gray = (Red * 0.2126 + Green * 0.7152 + Blue * 0.0722)
+            // const y = (0.2126 * r) + (0.7152 * g) + (0.0722 * b);
+
+            // // Gray = (Red * 0.299 + Green * 0.587 + Blue * 0.114)
+            const y = (0.299 * r) + (0.587 * g) + (0.114 * b);
+
+            // // Gray = ( Max(Red, Green, Blue) + Min(Red, Green, Blue) ) / 2
+            return {r: y, g: y, b: y, a: y};
+        }
+
+        function makeGrayScale() {
+            let r, g, b, a;
+            let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            let numPixels = imageData.data.length / 4;
+            for (let i = 0; i < numPixels; i++) {
+                r = imageData.data[i * 4 + 0];
+                g = imageData.data[i * 4 + 1];
+                b = imageData.data[i * 4 + 2];
+                a = imageData.data[i * 4 + 3];
+
+                pixel = makePixelGrayScale(r, g, b, a);
+
+                imageData.data[i * 4 + 0] = pixel.r;
+                imageData.data[i * 4 + 1] = pixel.g;
+                imageData.data[i * 4 + 2] = pixel.b;
+                imageData.data[i + 4 + 3] = pixel.a;
+            }
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        function inverColor() {
+            let r, g, b, a;
+            let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            let numPixels = imageData.data.length / 4;
+            for (var i = 0; i < numPixels; i++){
+                r = imageData.data[i * 4 + 0];
+                g = imageData.data[i * 4 + 1];
+                b = imageData.data[i * 4 + 2];
+                a = imageData.data[i * 4 + 3];
+                imageData.data[i * 4 + 0] = 255 - r;   // Red
+                imageData.data[i * 4 + 1] = 255 - g;   // Green
+                imageData.data[i * 4 + 2] = 255 - b;   // Blue
+                // imageData.data[i * 4 + 3] = 255 - a;   // Alpha
+            }
+            ctx.putImageData(imageData, 0, 0);
+        }
+    </script>
+</body>
+</html>
