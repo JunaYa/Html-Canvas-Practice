@@ -15,7 +15,8 @@
     }
     #c2 {
       /* background-image: url(./foo.png); */
-      background-image: url(https://oss-sts-upload.yunshuxie.com/pic/thadm/talk_picture/2020/08/20/15/34/58/72d4e42225784761820e5a58a2cbaa6e/6c42e7f6-833c-4b08-97b0-eca051e85e29.png);
+      /* background-image: url(https://oss-sts-upload.yunshuxie.com/pic/thadm/talk_picture/2020/08/20/15/34/58/72d4e42225784761820e5a58a2cbaa6e/6c42e7f6-833c-4b08-97b0-eca051e85e29.png); */
+      background-color: aqua;
       background-repeat: no-repeat;
       background-size: contain;
     }
@@ -26,6 +27,20 @@
       margin: 10px;
       background:#3B3B3B;
     }
+    .cheers {
+      top: 100px;
+      left: 100px;
+      position: absolute;
+      font-size: 48px;
+      font-weight: 500;
+      color: yellow;
+      text-align: center;
+      z-index: 1;
+      display: none;
+    }
+    .show {
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -35,7 +50,10 @@
   </div>
   <div>
     <canvas id="c1" width="480" height="288"></canvas>
-    <canvas id="c2" width="480" height="288"></canvas>
+    <div class="wrapper">
+      <canvas id="c2" width="480" height="288"></canvas>
+      <div class="cheers">恭喜你</div>
+    </div>
   </div>
   <script >
     const styles = 
@@ -47,7 +65,8 @@
     const video = document.createElement('video');
     const ctx1 = document.getElementById("c1").getContext("2d");
     const ctx2 = document.getElementById("c2").getContext("2d");
-
+    const cheers = document.querySelector('.cheers');
+    let isRight = false;
     const width = 480;
     const height = 288;
 
@@ -64,10 +83,16 @@
         let r = frame.data[i * 4 + 0];
         let g = frame.data[i * 4 + 1];
         let b = frame.data[i * 4 + 2];
-        if (g > 100 && r > 100 && b < 43)
+        if (g > 100 && r > 100 && b < 43 && !isRight) {
           frame.data[i * 4 + 3] = 0;
+          isRight = true;
+        }
       }
       ctx2.putImageData(frame, 0, 0);
+      if (isRight) {
+        console.log('----')
+        cheers.classList.add('show')
+      }
       return;
     }
 
