@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VideoVR matcher</title>
+  <style>
+    body {
+      background: black;
+      color:#CCCCCC; 
+    }
+    div {
+      float: left;
+      border :1px solid #444444;
+      padding:10px;
+      margin: 10px;
+      background:#3B3B3B;
+    }
+
+    .cheers {
+      display: none;
+      position: absolute;
+      top: 100px;
+      left: 0;
+      right: 0;
+      z-index: 1;
+      color: yellow;
+      font-size: 48px;
+      font-weight: 500;
+      text-align: center;
+    }
+
+    .show {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <button class="button-fetch-video">START</button>
+  <div>
+    <canvas class="canvas" width="480" height="320"></canvas>
+    <div class="cheers">WIN!!!</div>
+  </div>
+  <script >
+    const styles = 
+          `width: 100%; padding: 6px 100px; background-color: blue; color: white; font-style: 
+          italic; font-size: 2em; border-radius: 4px;`;
+    console.log('%cGAME', styles);
+
+    const video = document.createElement('video');
+    const ctx = document.querySelector('.canvas').getContext('2d');
+
+    const cheers = document.querySelector('.cheers');
+
+    
+    const width = 480;
+    const height = 320;
+
+    // card type
+    const CODE = {
+      RED: '255-0-0',
+      GREEN: '0-255-0',
+      BLUE: '0-0-255',
+    };
+
+    // game code
+    let win = false;
+
+    function computeFrame() {
+      if (video.paused || video.ended) {
+        return;
+      }
+      requestAnimationFrame(computeFrame);
+      // only draw
+      ctx.drawImage(video, 0, 0, width, height);
+      
+      let frame = ctx.getImageData(0, 0, width, height);
+      let l = frame.data.length / 4;
+  
+      for (let i = 0; i < l; i++) {
+        let r = frame.data[i * 4 + 0];
+        let g = frame.data[i * 4 + 1];
+        let b = frame.data[i * 4 + 2];
+        if (g > 100 && r > 100 && b < 43) {
+          frame.data[i * 4 + 3] = 0;
+          win = true;
+        } else {
+          win = false;
+        }
+      }
+      ctx.putImageData(frame, 0, 0);
+      if (win) {
+        cheers.classList.add('show');
+      } else {
+        // cheers.classList.remove('show');
+      }
+      return;
+    }
+
+    video.addEventListener('play', () => {
+      computeFrame();
+    })
+
+    document.querySelector('.button-fetch-video').addEventListener('click', onButtonClick);
+
+    function onButtonClick() {
+      video.load();
+
+      liveVideo();
+    }
+
+    async function liveVideo() {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({video: true});
+      console.log('mediaStream', mediaStream)
+      video.srcObject = mediaStream;
+      if ('srcObject' in video) {
+        try {
+          video.srcObject = mediaStream;
+        } catch (err) {
+          if (err.name != "TypeError") {
+            throw err;
+          }
+          // Even if they do, they may only support MediaStream
+          video.src = URL.createObjectURL(mediaStream);
+        }
+      } else {
+        // Avoid using this in new browsers, as it is going away.
+        video.src = URL.createObjectURL(mediaStream);
+      }
+      video.play();
+    }
+  </script>
+</body>
+</html>
