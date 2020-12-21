@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=<device-width>, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        window.addEventListener('load', function() {
+            var t = window.performance.timing;
+            var data = {fsp: t.domContentLoadedEventStart, navigatorStart: t.navigationStart};
+            var blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+            navigator.sendBeacon('https://doudo.xyz/doudo/index.html', blob);
+        }, false);
+    </script>
+</body>
+</html>

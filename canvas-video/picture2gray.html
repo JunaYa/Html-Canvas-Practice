@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <canvas id="canvas" width="800" height="800"></canvas>
+    <script>
+        const canvas = document.querySelector('#canvas');
+        canvas.width = 800;
+        canvas.height = 800;
+        const ctx = canvas.getContext('2d');
+
+        let image = new Image();
+        image.onload = function() {
+            ctx.drawImage(image, 0, 0);
+            // makeGrayScale();
+            inverColor();
+        }
+        image.src = './assets/picture1.webp';
+
+        // https://tannerhelland.com/2011/10/01/grayscale-image-algorithm-vb6.html
+        const makePixelGrayScale = function(r, g, b, a) {
+            const y = (0.3 * r) + (0.59 * g) + (0.11 * b);
+            return {r: y, g: y, b: y, a: y};
+        }
+
+        function makeGrayScale() {
+            let r, g, b, a;
+            let imageData = ctx.getImageData(0, 0, 800, 800);
+            let numPixels = imageData.data.length / 4;
+            for (let i = 0; i < numPixels; i++) {
+                r = imageData.data[i * 4 + 0];
+                g = imageData.data[i * 4 + 1];
+                b = imageData.data[i * 4 + 2];
+                a = imageData.data[i * 4 + 3];
+
+                pixel = makePixelGrayScale(r, g, b, a);
+
+                imageData.data[i * 4 + 0] = pixel.r;
+                imageData.data[i * 4 + 1] = pixel.g;
+                imageData.data[i * 4 + 2] = pixel.b;
+                imageData.data[i + 4 + 3] = pixel.a;
+            }
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        function inverColor() {
+            let r, g, b, a;
+            let imageData = ctx.getImageData(0, 0, 800, 800);
+            let numPixels = imageData.data.length / 4;
+            for (var i = 0; i < numPixels; i++){
+                r = imageData.data[i * 4 + 0];
+                g = imageData.data[i * 4 + 1];
+                b = imageData.data[i * 4 + 2];
+                a = imageData.data[i * 4 + 3];
+                imageData.data[i * 4 + 0] = 255 - r;   // Red
+                imageData.data[i * 4 + 1] = 255 - g;   // Green
+                imageData.data[i * 4 + 2] = 255 - b;   // Blue
+                // imageData.data[i * 4 + 3] = 255 - a;   // Alpha
+            }
+            ctx.putImageData(imageData, 0, 0);
+        }
+    </script>
+</body>
+</html>
