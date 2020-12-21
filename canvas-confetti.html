@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Canvas confetti</title>
+</head>
+<body>
+  <script>
+    var raf = (function () {
+      var TIME = Math.floor(1000 / 60);
+      var frame, cancel;
+      var frames = {};
+      var lastFrameTime = 0;
+
+      if (typeof requestAnimationFrame === 'function' && typeof cancelAnimationFrame === 'function') {
+        frame = function (cb) {
+          var id = Math.random();
+
+          frames[id] = requestAnimationFrame(function onFrame(time) {
+            if (lastFrameTime === time || lastFrameTime + TIME - 1 < time) {
+              lastFrameTime = time;
+              delete frames[id];
+
+              cb();
+            } else {
+              frames[id] = requestAnimationFrame(onFrame);
+            }
+          });
+
+          return id;
+        };
+        cancel = function (id) {
+          if (frames[id]) {
+            cancelAnimationFrame(frames[id]);
+          }
+        };
+      } else {
+        frame = function (cb) {
+          return setTimeout(cb, TIME);
+        };
+        cancel = function (timer) {
+          return clearTimeout(timer);
+        };
+      }
+
+      return { frame: frame, cancel: cancel };
+    }());
+
+    function generateFettis (ops, count) {
+      var temp = count;
+      var origin = {x: 0, y: 1}
+      var fettis = []
+
+      while (temp--) {
+        fettis.push(
+          randomPhysics({
+            x: ops.x,
+            y: ops.y,
+            angle: ops.angle,
+            spread: ops.spread,
+            startVelocity: ops.startVelocity,
+            ticks: ops.ticks,
+            decay: ops.decay,
+            gravity: ops.gravity,
+            scalar: ops.scalar
+          })
+        );
+      }
+      
+      return fettis;
+    }
+
+    function onlyPositiveInt(number){
+      return number < 0 ? 0 : Math.floor(number);
+    }
+
+    function randomInt(min, max) {
+      // [min, max)
+      return Math.floor(Math.random() * (max - min)) + min;
+    }
+
+    function randomPhysics(opts) {
+      var radAngle = opts.angle * (Math.PI / 180);
+      var radSpread = opts.spread * (Math.PI / 180);
+
+      return {
+        x: opts.x,
+        y: opts.y,
+        wobble: Math.random() * 10,
+        velocity: (opts.startVelocity * 0.5) + (Math.random() * opts.startVelocity),
+        angle2D: -radAngle + ((0.5 * radSpread) - (Math.random() * radSpread)),
+        tiltAngle: Math.random() * Math.PI,
+        tick: 0,
+        totalTicks: opts.ticks,
+        decay: opts.decay,
+        random: Math.random() + 5,
+        tiltSin: 0,
+        tiltCos: 0,
+        wobbleX: 0,
+        wobbleY: 0,
+        gravity: opts.gravity * 3,
+        ovalScalar: 0.6,
+        scalar: opts.scalar
+      };
+    }
+
+    function updateFetti(context, fetti, img) {
+      fetti.x += Math.cos(fetti.angle2D) * fetti.velocity;
+      fetti.y += Math.sin(fetti.angle2D) * fetti.velocity + fetti.gravity;
+      fetti.wobble += 0.1;
+      fetti.velocity *= fetti.decay;
+      fetti.tiltAngle += 0.1;
+      fetti.tiltSin = Math.sin(fetti.tiltAngle);
+      fetti.tiltCos = Math.cos(fetti.tiltAngle);
+      fetti.random = Math.random() + 5;
+      fetti.wobbleX = fetti.x + ((10 * fetti.scalar) * Math.cos(fetti.wobble));
+      fetti.wobbleY = fetti.y + ((10 * fetti.scalar) * Math.sin(fetti.wobble));
+
+      var progress = (fetti.tick++) / fetti.totalTicks;
+
+      var x1 = fetti.x + (fetti.random * fetti.tiltCos);
+      var y1 = fetti.y + (fetti.random * fetti.tiltSin);
+      var x2 = fetti.wobbleX + (fetti.random * fetti.tiltCos);
+      var y2 = fetti.wobbleY + (fetti.random * fetti.tiltSin);
+
+      // void ctx.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
+      context.drawImage(img, x1, y1, 36, 36, x2, y2, 36, 36);
+      return fetti.tick < fetti.totalTicks;
+    }
+
+    function animate(canvas, fettis, resizer, size, done, img) {
+      const context = canvas.getContext('2d');
+      var animatingFettis = fettis.slice();
+      var animationFrame;
+      var destroy;
+
+      var prom = () => {
+        function onDone() {
+          animationFrame = destroy = null;
+
+          context.clearRect(0, 0, size.width, size.height);
+
+          done();
+        }
+
+        function update() {
+          if (!size.width && !size.height) {
+            resizer(canvas);
+            size.width = canvas.width;
+            size.height = canvas.height;
+          }
+
+          context.clearRect(0, 0, size.width, size.height);
+
+          console.log('updateFetti')
+          animatingFettis = animatingFettis.filter(function (fetti) {
+            return updateFetti(context, fetti, img);
+          });
+
+          if (animatingFettis.length) {
+            animationFrame = raf.frame(update);
+          } else {
+            onDone();
+          }
+        }
+
+        animationFrame = raf.frame(update);
+        // destroy = onDone;
+      };
+
+      return {
+        addFettis: function (fettis) {
+          animatingFettis = animatingFettis.concat(fettis);
+
+          return prom;
+        },
+        canvas: canvas,
+        promise: prom,
+        reset: function () {
+          if (animationFrame) {
+            raf.cancel(animationFrame);
+          }
+
+          if (destroy) {
+            destroy();
+          }
+        }
+      };
+    }
+
+    var defaults = {
+      particleCount: 50,
+      angle: -90,
+      spread: 100,
+      startVelocity: 24,
+      decay: 0.9,
+      gravity: 0.98,
+      ticks: 100,
+      x: 0,
+      y: 1,
+      zIndex: 100,
+      // probably should be true, but back-compat
+      disableForReducedMotion: false,
+      scalar: 1
+    };
+
+    function generateCanvas (zIndex) {
+      const { innerWidth, innerHeight } = window;
+
+      var canvas = document.createElement('canvas');
+      canvas.style.position = 'fixed';
+      canvas.style.top = '0px';
+      canvas.style.left = '0px';
+      canvas.style.pointerEvents = 'none';
+      canvas.style.zIndex = zIndex;
+      canvas.style.backgroundColor = '#333333';
+      canvas.style.width = innerWidth;
+      canvas.style.height = innerHeight;
+      canvas.width = innerWidth;
+      canvas.height = innerHeight;
+      document.querySelector('body').appendChild(canvas);
+
+      return canvas;
+    }
+
+    const canvas = generateCanvas(100);
+    const context = canvas.getContext('2d');
+
+    const fettis = generateFettis(defaults, 50);
+    console.log('fettis', fettis);
+    const size = {width: canvas.width, height: canvas.height };
+    
+    const img = new Image();
+    img.onload = () => {
+      console.log('image load')
+      // context.drawImage(img, 0, 0);
+      const anim = animate(canvas, fettis, null, size, () => {
+        console.log('done');
+      }, img);
+      console.log('run anim ----', anim)
+      console.log('run anim ----', anim.promise())
+      // console.log('run anim ----', anim.reset())
+
+    }
+    img.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFQAAABUCAMAAAArteDzAAAABGdBTUEAALGPC/xhBQAAAAFzUkdCAK7OHOkAAABUUExURUxpcf9+Nf9+Nf9VAP99Nf18Nv9/NP19Nf9zLv99NP99Nf9+Nf9+NP9/NP9/Nf98Nv98Nv////5+Nv7Suf6/m/6RU/728f7r3/6FQP6yiP6dZ/78+pxj2KgAAAARdFJOUwDOrAO/oCLwC/uU4G9OGF4viAHefgAAAihJREFUWMO1We12gyAMFUVR1Fpi1Wrf/z23tVtrByUBzP3NuSeEm0+yDEPVd1qKVjWNaoXUXV9laTgNZQsW2nI4xTLWg2zgAxo51BGUVanAC1WG+uGcN4Ciyc8hriyBiJLq3KJTQIbqCpIzBQRBEFzbKwiE6rGra4iA9rqgziEKuUe0tYRIyI+stYBoiPpoOz/bWuSQhNz1WhoSoR36hGRYeq1UOqn6F1uFgAMg3t3awSHo3nKdOoZU7TNhCQeh3OV5OAyvWpAfR5o/5USoRzCNyzJOeN2qAjy6zuYby5Xq1Rp/+utoHlhxATwSy4Ae3OZfTnPB7zTcSSXVTBqpvAsfeaZtMUGkzQm//eVmwkjv9/e+/bQ3k0j68/6tT0g3g2C2tdt+K9+nd0PAbLFWnoy/zoaE0a4AHUFIiKl2VtWY3nHYFVCmmekilZnA9B5OKlyK2m4mibTNHCkqzE6bVGV25F9NImnDQ+q4/i35+o6HGk3qQ4lUlbokJeOyk1/8mpRHA8O0I2X8wITSk2pTYOqrSFU0MEn7ygkh/7nLibfwWcZSC99A6KGCSzTSTLxXP2ozgbY9+0igtj14g7aLBHKDRmgln5FAbiUpTe9fJGzkUYLSnj/Ehd/+2Z7TBolpXfGW/zVI8Iw8LMMZzxjJMvDyjOYsSwSedQfPYoZnhcSy7OJZy/EsEHlWnTxLWZ71MdOim2clz/N5wPTNwfQhw/R1xPTJFf8d9wV9jYE3VitRcwAAAABJRU5ErkJggg==';
+  </script>
+</body>
+</html>
